@@ -58,6 +58,7 @@ class AzCli(CLI):
         self.data['command'] = 'unknown'
         self.data['command_extension_name'] = None
         self.data['completer_active'] = ARGCOMPLETE_ENV_NAME in os.environ
+
         self.data['query_active'] = False
 
         azure_folder = self.config.config_dir
@@ -161,7 +162,6 @@ class AzCli(CLI):
 
 
 class MainCommandsLoader(CLICommandsLoader):
-
     # Format string for pretty-print the command module table
     header_mod = "%-20s %10s %9s %9s" % ("Name", "Load Time", "Groups", "Commands")
     item_format_string = "%-20s %10.3f %9d %9d"
@@ -260,6 +260,7 @@ class MainCommandsLoader(CLICommandsLoader):
              Otherwise, the list will be extended using ALWAYS_LOADED_EXTENSIONS.
              If the extensions in the list are not installed, it will be skipped.
             """
+
             def _handle_extension_suppressions(extensions):
                 filtered_extensions = []
                 for ext in extensions:
@@ -382,9 +383,17 @@ class MainCommandsLoader(CLICommandsLoader):
         self.command_group_table.clear()
         self.command_table.clear()
 
+        # For some commands, all modules need to be loaded,
+        # because they need to support searching the contents of other module commands
+        full_loaded_commands = ['next']
+        need_load_all_modules = False
+        if isinstance(args, list) and args:
+            need_load_all_modules = args[0] in full_loaded_commands
+
         command_index = None
         # Set fallback=False to turn off command index in case of regression
-        use_command_index = self.cli_ctx.config.getboolean('core', 'use_command_index', fallback=True)
+        use_command_index = (self.cli_ctx.config.getboolean('core', 'use_command_index', fallback=True) and
+                             not need_load_all_modules)
         if use_command_index:
             command_index = CommandIndex(self.cli_ctx)
             index_result = command_index.get(args)
@@ -483,7 +492,6 @@ class MainCommandsLoader(CLICommandsLoader):
 
 
 class CommandIndex:
-
     _COMMAND_INDEX = 'commandIndex'
     _COMMAND_INDEX_VERSION = 'version'
     _COMMAND_INDEX_CLOUD_PROFILE = 'cloudProfile'
@@ -600,8 +608,8 @@ class ModExtensionSuppress:  # pylint: disable=too-few-public-methods
 
     def handle_suppress(self, ext):
         from pkg_resources import parse_version
-        should_suppress = ext.name == self.suppress_extension_name and ext.version and \
-            parse_version(ext.version) <= parse_version(self.suppress_up_to_version)
+        should_suppress = ext.name == (self.suppress_extension_name and ext.version and
+                                       parse_version(ext.version) <= parse_version(self.suppress_up_to_version))
         if should_suppress:
             reason = self.reason or "Use --debug for more information."
             logger.warning("Extension %s (%s) has been suppressed. %s",

@@ -27,6 +27,8 @@ class AzCLIErrorType(Enum):
     # unexpected error
     UnexpectedError = 'UnexpectedError'
 
+    RecommendationError = 'RecommendationError'
+
 
 class AzCLIError(CLIError):
     """ AzureCLI error definition """
@@ -70,6 +72,7 @@ class AzCLIError(CLIError):
 
     def send_telemetry(self):
         import azure.cli.core.telemetry as telemetry
+        from azure.cli.core.util import log_latest_error_info
         telemetry.set_error_type(self.error_type.value)
 
         # For userfaults
@@ -78,11 +81,14 @@ class AzCLIError(CLIError):
                                AzCLIErrorType.ValidationError,
                                AzCLIErrorType.ManualInterrupt]:
             telemetry.set_user_fault(self.error_msg)
+            log_latest_error_info(self.error_msg, self.error_type)
 
         # For failures: service side error, client side error, unexpected error
         else:
             telemetry.set_failure(self.error_msg)
+            log_latest_error_info(self.error_msg, self.error_type)
 
         # For unexpected error
         if self.raw_exception:
             telemetry.set_exception(self.raw_exception, '')
+            log_latest_error_info(self.raw_exception, self.error_type)
