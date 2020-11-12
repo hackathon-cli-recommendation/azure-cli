@@ -1075,11 +1075,11 @@ def handle_version_update():
         logger.warning(ex)
 
 
-def log_cmd_history(command_info):
+def log_cmd_history(command, args):
     import os
     from knack.util import ensure_dir
 
-    if not command_info:
+    if not args or not command:
         return
 
     base_dir = os.path.join(get_config_dir(), 'recommendation')
@@ -1096,7 +1096,15 @@ def log_cmd_history(command_info):
         lines = [x.strip('\n') for x in lines if x]
 
     with open(file_path, 'w') as fd:
-        lines.append(command_info)
+        command_info = {'command': command}
+        params = []
+        for arg in args:
+            if arg.startswith('-'):
+                params.append(arg)
+        if len(params) > 0:
+            command_info['arguments'] = params
+
+        lines.append(json.dumps(command_info))
         if len(lines) > 15:
             lines = lines[-15:]
         fd.write('\n'.join(lines))

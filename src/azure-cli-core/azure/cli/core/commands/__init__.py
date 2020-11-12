@@ -515,7 +515,7 @@ class AzCliCommandInvoker(CommandInvoker):
         telemetry.set_raw_command_name(command)
 
         if command != 'next':
-            log_cmd_history(command)
+            log_cmd_history(command, args)
             clean_exception_history()
 
         try:
